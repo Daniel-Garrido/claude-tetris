@@ -86,6 +86,21 @@ jobs:
                ### Dudas / información faltante
                Preguntas para quien reportó el issue, si falta información (o "Ninguna").
 
+               FORMATO OBLIGATORIO: el contenido de diagnostico.md debe ser Markdown válido que GitHub
+               renderice correctamente (GitHub Flavored Markdown):
+               - Escríbelo sin la sangría de este prompt: cada línea empieza en la columna 0
+                 (la sangría de 4+ espacios convierte el texto en un bloque de código).
+               - Deja una línea en blanco antes y después de cada encabezado, lista, tabla y bloque de código.
+               - Usa encabezados `##`/`###`, listas con `-` o `1.`, **negrita** y `código en línea`
+                 para nombres de archivos, funciones y variables.
+               - Para fragmentos de código usa bloques cercados con ``` e indica el lenguaje (```js, ```html, ```css).
+               - En **Tipo**, **Labels asignados** y **Complejidad estimada**, termina cada línea con dos espacios
+                 o sepáralas con una línea en blanco para que no se junten en un solo párrafo.
+               - No envuelvas todo el comentario en un bloque de código ni uses HTML salvo el marcador
+                 `<!-- claude-issue-triage -->` de la primera línea.
+               - Si al editar un issue el comentario anterior no cumplía este formato, reescríbelo completo
+                 con el formato correcto.
+
             5. Publica (o actualiza, si ya existía) el comentario de diagnóstico con:
                gh issue comment ${{ github.event.issue.number }} --edit-last --create-if-none --body-file diagnostico.md
 
