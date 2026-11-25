@@ -52,6 +52,24 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeBtn = document.getElementById('theme-toggle');
+const pauseMenu = document.getElementById('pause-menu');
+const menuMain = document.getElementById('menu-main');
+const menuControls = document.getElementById('menu-controls');
+const startLevelEl = document.getElementById('start-level');
+const levelDownBtn = pauseMenu.querySelector('[data-action="level-down"]');
+const levelUpBtn = pauseMenu.querySelector('[data-action="level-up"]');
+
+const MIN_START_LEVEL = 1;
+const MAX_START_LEVEL = 10; // a partir del 11 la velocidad ya es la máxima
+const START_LEVEL_KEY = 'tetris.startLevel';
+
+let startLevel = loadStartLevel();
+
+// Teclas pulsadas ahora mismo, y las que seguían pulsadas al cerrar el menú:
+// estas se ignoran hasta soltarlas, para que una tecla mantenida (o su
+// autorepetición) no mueva la pieza al volver al juego.
+const heldKeys = new Set();
+let blockedKeys = new Set();
 
 let theme = 'dark';
 let gridColor = '#22222e';
@@ -122,8 +140,8 @@ function clearLines() {
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
-    dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    level = startLevel + Math.floor(lines / 10);
+    dropInterval = speedFor(level);
     updateHUD();
   }
 }
@@ -242,19 +260,120 @@ function endGame() {
   overlay.classList.remove('hidden');
 }
 
-function togglePause() {
-  if (gameOver) return;
-  paused = !paused;
-  if (!paused) {
-    lastTime = performance.now();
-    loop(lastTime);
-  } else {
-    cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
+function speedFor(lvl) {
+  return Math.max(100, 1000 - (lvl - 1) * 90);
+}
+
+function loadStartLevel() {
+  let saved = NaN;
+  try { saved = parseInt(localStorage.getItem(START_LEVEL_KEY), 10); } catch {}
+  return Number.isInteger(saved) && saved >= MIN_START_LEVEL && saved <= MAX_START_LEVEL
+    ? saved : MIN_START_LEVEL;
+}
+
+function setStartLevel(value) {
+  startLevel = Math.min(MAX_START_LEVEL, Math.max(MIN_START_LEVEL, value));
+  startLevelEl.textContent = startLevel;
+  levelDownBtn.disabled = startLevel === MIN_START_LEVEL;
+  levelUpBtn.disabled = startLevel === MAX_START_LEVEL;
+  try { localStorage.setItem(START_LEVEL_KEY, String(startLevel)); } catch {}
+}
+
+// ---- Menú de pausa ----
+
+function showMenuView(view) {
+  menuMain.classList.toggle('hidden', view !== 'main');
+  menuControls.classList.toggle('hidden', view !== 'controls');
+  const focusTarget = view === 'main'
+    ? menuMain.querySelector('[data-action="resume"]')
+    : menuControls.querySelector('[data-action="back"]');
+  focusTarget.focus();
+}
+
+function openPauseMenu() {
+  if (gameOver || paused) return;
+  paused = true;
+  cancelAnimationFrame(animId);
+  pauseMenu.classList.remove('hidden');
+  showMenuView('main');
+}
+
+function closePauseMenu() {
+  if (!paused) return;
+  pauseMenu.classList.add('hidden');
+  if (pauseMenu.contains(document.activeElement)) document.activeElement.blur();
+  blockedKeys = new Set(heldKeys);
+  paused = false;
+  lastTime = performance.now();
+  animId = requestAnimationFrame(loop);
+}
+
+function menuFocusables() {
+  const view = menuMain.classList.contains('hidden') ? menuControls : menuMain;
+  return [...view.querySelectorAll('button:not(:disabled)')];
+}
+
+function moveMenuFocus(step) {
+  const items = menuFocusables();
+  if (!items.length) return;
+  const i = items.indexOf(document.activeElement);
+  const nextIndex = i === -1 ? 0 : (i + step + items.length) % items.length;
+  items[nextIndex].focus();
+}
+
+function handleMenuKey(e) {
+  switch (e.code) {
+    case 'KeyP':
+      e.preventDefault();
+      closePauseMenu();
+      break;
+    case 'Escape':
+      e.preventDefault();
+      if (menuControls.classList.contains('hidden')) closePauseMenu();
+      else showMenuView('main');
+      break;
+    case 'ArrowDown':
+    case 'Tab':
+      e.preventDefault();
+      moveMenuFocus(e.code === 'Tab' && e.shiftKey ? -1 : 1);
+      break;
+    case 'ArrowUp':
+      e.preventDefault();
+      moveMenuFocus(-1);
+      break;
+    case 'ArrowLeft':
+    case 'ArrowRight':
+      e.preventDefault();
+      if (document.activeElement?.classList.contains('step-btn')) {
+        setStartLevel(startLevel + (e.code === 'ArrowRight' ? 1 : -1));
+        // si el botón enfocado se ha deshabilitado, pasar el foco al otro
+        if (document.activeElement.disabled || document.activeElement === document.body) {
+          (levelDownBtn.disabled ? levelUpBtn : levelDownBtn).focus();
+        }
+      }
+      break;
+    case 'Space':
+    case 'Enter':
+      // Dejar que el botón enfocado lo active; si no hay foco, no hacer scroll
+      if (!(document.activeElement instanceof HTMLButtonElement)) e.preventDefault();
+      break;
   }
 }
+
+pauseMenu.addEventListener('click', e => {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  switch (btn.dataset.action) {
+    case 'resume':     closePauseMenu(); break;
+    case 'restart':    init(); break;
+    case 'controls':   showMenuView('controls'); break;
+    case 'back':       showMenuView('main'); break;
+    case 'level-down': setStartLevel(startLevel - 1); break;
+    case 'level-up':   setStartLevel(startLevel + 1); break;
+  }
+  // Un botón de nivel que llega al límite se deshabilita y pierde el foco
+  if (btn.disabled) (btn === levelDownBtn ? levelUpBtn : levelDownBtn).focus();
+});
 
 function loop(ts) {
   if (gameOver || paused) return;
@@ -280,23 +399,47 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  level = startLevel;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = speedFor(level);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  pauseMenu.classList.add('hidden');
+  if (pauseMenu.contains(document.activeElement)) document.activeElement.blur();
+  blockedKeys = new Set(heldKeys);
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
+document.addEventListener('keyup', e => {
+  heldKeys.delete(e.code);
+  blockedKeys.delete(e.code);
+});
+
+// Si la ventana pierde el foco no llegarán los keyup: olvidar el estado
+window.addEventListener('blur', () => {
+  heldKeys.clear();
+  blockedKeys.clear();
+});
+
 document.addEventListener('keydown', e => {
-  if (e.code === 'KeyP') { togglePause(); return; }
-  if (paused || gameOver) return;
+  heldKeys.add(e.code);
+  // Menú abierto: ninguna tecla llega al juego
+  if (paused) { handleMenuKey(e); return; }
+  if (gameOver) return;
+  if (e.code === 'KeyP' || e.code === 'Escape') {
+    if (!e.repeat) openPauseMenu();
+    return;
+  }
+  if (blockedKeys.has(e.code)) {
+    if (e.code === 'Space') e.preventDefault();
+    return;
+  }
   switch (e.code) {
     case 'ArrowLeft':
       if (!collide(current.shape, current.x - 1, current.y)) current.x--;
@@ -339,5 +482,6 @@ themeBtn.addEventListener('click', () => {
   themeBtn.blur(); // que Space siga siendo la caída
 });
 
+setStartLevel(startLevel);
 init();
 setTheme('dark');
