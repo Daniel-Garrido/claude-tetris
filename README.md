@@ -42,6 +42,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
+- **Skins** seleccionables desde el panel lateral (_Retro_, _Neon_, _Pastel_ y _Pixel art_), compatibles con el modo claro/oscuro. La preferencia se guarda en `localStorage` (`tetris.skin`).
 
 ---
 
