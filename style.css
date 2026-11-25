@@ -221,3 +221,193 @@ kbd {
 #theme-toggle:hover {
   border-color: var(--accent);
 }
+
+/* ---- Tabla de records y pantalla de inicio ---- */
+.rec-hidden {
+  display: none !important;
+}
+
+/* El toggle de tema sigue accesible sobre la pantalla de inicio */
+#theme-toggle {
+  z-index: 2;
+}
+
+.records-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 280px;
+}
+
+.records-msg {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.records-list {
+  list-style: none;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+}
+
+.records-list li {
+  display: grid;
+  grid-template-columns: 20px 1fr auto 48px;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel-bg);
+  color: var(--text);
+  text-align: left;
+}
+
+.records-list .rec-pos {
+  color: var(--label);
+  font-weight: 700;
+}
+
+.records-list .rec-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.records-list .rec-score {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.records-list .rec-lines {
+  color: var(--muted);
+  font-size: 11px;
+  text-align: right;
+}
+
+.records-list li.highlight {
+  border-color: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.records-list li.highlight .rec-name {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.records-list li.empty {
+  display: block;
+  text-align: center;
+  color: var(--muted);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.records-stats {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.records-stats strong {
+  color: var(--accent);
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.name-form {
+  display: flex;
+  gap: 6px;
+}
+
+#name-input {
+  width: 150px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-bg);
+  color: var(--text);
+  font-size: 14px;
+  user-select: text;
+}
+
+#name-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+#save-record-btn,
+#play-btn,
+#reset-yes-btn {
+  background: var(--accent);
+  color: var(--on-accent);
+  border: none;
+  border-radius: 6px;
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+#save-record-btn:hover,
+#play-btn:hover {
+  background: var(--accent-hover);
+}
+
+#play-btn {
+  padding: 10px 36px;
+  font-size: 16px;
+  letter-spacing: 1px;
+}
+
+#reset-yes-btn {
+  background: var(--danger);
+}
+
+#home-btn,
+#reset-records-btn,
+#reset-no-btn {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#reset-records-btn:hover,
+#reset-no-btn:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+#home-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.reset-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.start-title {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: 10px;
+  text-indent: 10px;
+  color: var(--accent);
+  text-shadow: 0 0 12px var(--accent-glow);
+}
