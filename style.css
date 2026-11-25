@@ -221,3 +221,33 @@ kbd {
 #theme-toggle:hover {
   border-color: var(--accent);
 }
+
+/* ---- Selector de skin ---- */
+#skin-select {
+  background: var(--panel-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+#skin-select:hover,
+#skin-select:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+/* ---- Skin neon: fondo negro en los tableros (en ambos temas) ---- */
+:root[data-skin="neon"] #board,
+:root[data-skin="neon"] #next-canvas {
+  background: #000;
+  border-color: #1f1f33;
+}
+
+:root[data-skin="neon"]:not([data-theme="light"]) {
+  --bg: #000;
+  --panel-bg: #07070d;
+}

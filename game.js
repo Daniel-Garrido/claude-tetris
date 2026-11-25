@@ -4,28 +4,130 @@ const COLS = 10;
 const ROWS = 20;
 const BLOCK = 30;
 
-const COLORS = [
-  null,
-  '#4dd0e1', // I - cyan
-  '#ffd54f', // O - yellow
-  '#ba68c8', // T - purple
-  '#81c784', // S - green
-  '#e57373', // Z - red
-  '#90caf9', // J - pale blue
-  '#ffb74d', // L - orange
+// ---- Skins ----
+// Cada skin define su paleta (por tema claro/oscuro), el color de la rejilla
+// y su propia función de dibujo de bloque. Cambiar de skin sólo sustituye
+// estas referencias: no hace falta recargar la página.
+
+const SKIN_STORAGE_KEY = 'tetris-skin';
+const DEFAULT_SKIN = 'retro';
+
+// Traza un rectángulo con esquinas redondeadas (sin depender de ctx.roundRect)
+function roundedRectPath(context, x, y, w, h, r) {
+  context.beginPath();
+  context.moveTo(x + r, y);
+  context.arcTo(x + w, y, x + w, y + h, r);
+  context.arcTo(x + w, y + h, x, y + h, r);
+  context.arcTo(x, y + h, x, y, r);
+  context.arcTo(x, y, x + w, y, r);
+  context.closePath();
+}
+
+// Patrón fijo de 5×5 "píxeles" para la textura del skin pixel art:
+// 1 = brillo, 2 = sombra, 0 = color base.
+const PIXEL_PATTERN = [
+  [1, 1, 1, 1, 0],
+  [1, 0, 0, 1, 2],
+  [1, 0, 1, 0, 2],
+  [1, 0, 0, 0, 2],
+  [0, 2, 2, 2, 2],
 ];
 
-// Paleta con más contraste para el modo claro
-const COLORS_LIGHT = [
-  null,
-  '#00acc1', // I
-  '#f9a825', // O
-  '#8e24aa', // T
-  '#43a047', // S
-  '#e53935', // Z
-  '#1e88e5', // J
-  '#fb8c00', // L
-];
+// Orden de colores: [vacío, I, O, T, S, Z, J, L]
+const SKINS = {
+  retro: {
+    label: 'Retro',
+    colors: {
+      dark: [null, '#4dd0e1', '#ffd54f', '#ba68c8', '#81c784', '#e57373', '#90caf9', '#ffb74d'],
+      // Paleta con más contraste para el modo claro
+      light: [null, '#00acc1', '#f9a825', '#8e24aa', '#43a047', '#e53935', '#1e88e5', '#fb8c00'],
+    },
+    grid: null, // null = usa --grid del tema
+    drawBlock(context, px, py, size, color) {
+      context.fillStyle = color;
+      context.fillRect(px + 1, py + 1, size - 2, size - 2);
+      // highlight
+      context.fillStyle = 'rgba(255,255,255,0.12)';
+      context.fillRect(px + 1, py + 1, size - 2, 4);
+    },
+  },
+
+  neon: {
+    label: 'Neon',
+    // Fondo siempre negro: misma paleta en ambos temas
+    colors: {
+      dark: [null, '#00f0ff', '#fff200', '#d400ff', '#39ff14', '#ff1744', '#2979ff', '#ff9100'],
+    },
+    grid: '#12121e',
+    drawBlock(context, px, py, size, color) {
+      const alpha = context.globalAlpha;
+      context.save();
+      context.shadowColor = color;
+      context.shadowBlur = 14;
+      // relleno tenue + contorno brillante
+      context.globalAlpha = alpha * 0.35;
+      context.fillStyle = color;
+      context.fillRect(px + 3, py + 3, size - 6, size - 6);
+      context.globalAlpha = alpha;
+      context.strokeStyle = color;
+      context.lineWidth = 2;
+      context.strokeRect(px + 3, py + 3, size - 6, size - 6);
+      context.restore();
+    },
+  },
+
+  pastel: {
+    label: 'Pastel',
+    colors: {
+      dark: [null, '#a8e6ef', '#fdf1a7', '#d7b8f3', '#b8e8c4', '#f7b2bd', '#b3cdf6', '#fdd0a8'],
+      light: [null, '#7fd3e0', '#f7dc6f', '#c39be8', '#94d6a6', '#f28da0', '#8fb3ee', '#f9b57f'],
+    },
+    grid: null,
+    drawBlock(context, px, py, size, color) {
+      const r = size * 0.25;
+      roundedRectPath(context, px + 2, py + 2, size - 4, size - 4, r);
+      context.fillStyle = color;
+      context.fill();
+      context.strokeStyle = 'rgba(0,0,0,0.12)';
+      context.lineWidth = 1;
+      context.stroke();
+      // brillo suave arriba a la izquierda
+      roundedRectPath(context, px + 6, py + 5, size * 0.4, size * 0.2, size * 0.1);
+      context.fillStyle = 'rgba(255,255,255,0.45)';
+      context.fill();
+    },
+  },
+
+  pixel: {
+    label: 'Pixel art',
+    colors: {
+      dark: [null, '#3fc5d6', '#f2c230', '#a64fc2', '#5fb85f', '#d94c4c', '#5d8fd8', '#ef8f2f'],
+      light: [null, '#1fa5b6', '#d9a514', '#8a32a8', '#3f9a3f', '#c13232', '#3a70c0', '#d8761a'],
+    },
+    grid: null,
+    drawBlock(context, px, py, size, color) {
+      const n = PIXEL_PATTERN.length;
+      const cell = size / n;
+      context.fillStyle = color;
+      context.fillRect(px, py, size, size);
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          const v = PIXEL_PATTERN[r][c];
+          if (!v) continue;
+          context.fillStyle = v === 1 ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)';
+          // Coordenadas enteras para mantener los "píxeles" nítidos
+          const x0 = Math.round(px + c * cell), y0 = Math.round(py + r * cell);
+          const x1 = Math.round(px + (c + 1) * cell), y1 = Math.round(py + (r + 1) * cell);
+          context.fillRect(x0, y0, x1 - x0, y1 - y0);
+        }
+      }
+      // contorno oscuro de 1px
+      context.strokeStyle = 'rgba(0,0,0,0.55)';
+      context.lineWidth = 1;
+      context.strokeRect(px + 0.5, py + 0.5, size - 1, size - 1);
+    },
+  },
+};
 
 const PIECES = [
   null,
@@ -53,7 +155,10 @@ const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeBtn = document.getElementById('theme-toggle');
 
+const skinSelect = document.getElementById('skin-select');
+
 let theme = 'dark';
+let skin = SKINS[DEFAULT_SKIN];
 let gridColor = '#22222e';
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
@@ -174,13 +279,9 @@ function updateHUD() {
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  const color = (theme === 'light' ? COLORS_LIGHT : COLORS)[colorIndex];
+  const palette = (theme === 'light' && skin.colors.light) || skin.colors.dark;
   context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  // highlight
-  context.fillStyle = 'rgba(255,255,255,0.12)';
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+  skin.drawBlock(context, x * size, y * size, size, palette[colorIndex]);
   context.globalAlpha = 1;
 }
 
@@ -295,6 +396,7 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
+  if (e.target === skinSelect) return; // las flechas cambian la opción del selector
   if (e.code === 'KeyP') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
@@ -328,11 +430,42 @@ function setTheme(newTheme) {
   themeBtn.setAttribute('aria-pressed', String(isLight));
   themeBtn.setAttribute('aria-label', isLight ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro');
   themeBtn.textContent = isLight ? '🌙' : '☀️';
-  gridColor = getComputedStyle(document.documentElement).getPropertyValue('--grid').trim();
-  // Repintar de inmediato (el bucle está detenido en pausa / game over)
+  refreshVisuals();
+}
+
+// Recalcula los colores que dependen de tema/skin y repinta de inmediato
+// (el bucle está detenido en pausa / game over)
+function refreshVisuals() {
+  gridColor = skin.grid || getComputedStyle(document.documentElement).getPropertyValue('--grid').trim();
   draw();
   drawNext();
 }
+
+function loadSkin() {
+  try {
+    const saved = localStorage.getItem(SKIN_STORAGE_KEY);
+    if (saved && SKINS[saved]) return saved;
+  } catch { /* localStorage no disponible */ }
+  return DEFAULT_SKIN;
+}
+
+function setSkin(name) {
+  if (!SKINS[name]) name = DEFAULT_SKIN;
+  skin = SKINS[name];
+  document.documentElement.dataset.skin = name;
+  skinSelect.value = name;
+  try { localStorage.setItem(SKIN_STORAGE_KEY, name); } catch { /* ignorar */ }
+  refreshVisuals();
+}
+
+for (const [key, def] of Object.entries(SKINS)) {
+  skinSelect.add(new Option(def.label, key));
+}
+
+skinSelect.addEventListener('change', () => {
+  setSkin(skinSelect.value);
+  skinSelect.blur(); // devolver el teclado al juego
+});
 
 themeBtn.addEventListener('click', () => {
   setTheme(theme === 'light' ? 'dark' : 'light');
@@ -340,4 +473,5 @@ themeBtn.addEventListener('click', () => {
 });
 
 init();
+setSkin(loadSkin());
 setTheme('dark');
